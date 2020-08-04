@@ -42,8 +42,7 @@ class BotUser:
             DbConnetor.execute_insert_query(
                 f"""INSERT INTO checklist_bot.active_child
 	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
-                    ON CONFLICT (user_id) DO UPDATE 
-                        SET child_id = {self.uid};""")
+                    ON CONFLICT DO NOTHING;""")
             print ('parent_id4', parent_id)
         else:
             print ('test else')
