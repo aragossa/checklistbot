@@ -25,6 +25,7 @@ https://t.me/cheklistbot_bot?start={user.uid}"""
                   parent_id=parent_id,
                   user_role=user_role)
     keyboard = KeyboardHelper.main_menu_buttons(user)
+    print (send_text)
     user.send_message(text=send_text, keyboard=keyboard)
 
 
