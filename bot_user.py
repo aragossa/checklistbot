@@ -72,6 +72,7 @@ class BotUser:
     """
 
     def send_message(self, chat_id=None, message_index=None, text=None, keyboard=None):
+        print (text)
         if not text:
             text = self.select_message(message_index=message_index)
 
