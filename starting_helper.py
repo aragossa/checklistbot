@@ -10,14 +10,13 @@ from dbconnector import DbConnetor
 
 def stating_handler(user, message):
     parent_id = message.text.replace('/start ', '')
+    send_text = "Добро пожаловать!"
     if parent_id == ('/start'):
         parent_id = None
         send_text = f"""Добро пожаловать! Добавьте профиль ребенка и настройте чек-листы
 
 Сслылка для ребенка:
 https://t.me/cheklistbot_bot?start={user.uid}"""
-    else:
-        send_text = """Добро пожаловать!"""
 
     user_role = 'child'
     user.join_bot(last_name=message.from_user.last_name,
