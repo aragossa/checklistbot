@@ -31,6 +31,7 @@ class BotUser:
     """
 
     def join_bot(self, last_name, first_name, user_name, parent_id, user_role):
+        print ('parent_id1', parent_id)
         if parent_id:
             DbConnetor.execute_insert_query(
                 f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
@@ -41,6 +42,7 @@ class BotUser:
 	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
                     ON CONFLICT (user_id) DO UPDATE 
                         SET child_id = {self.uid};""")
+            print ('parent_id2', parent_id)
         else:
             DbConnetor.execute_insert_query(
                 f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
