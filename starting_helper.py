@@ -11,6 +11,7 @@ from dbconnector import DbConnetor
 def stating_handler(user, message):
     parent_id = message.text.replace('/start ', '')
     send_text = "Добро пожаловать!"
+    print ('send_text1', send_text)
     if parent_id == ('/start'):
         parent_id = None
         send_text = f"""Добро пожаловать! Добавьте профиль ребенка и настройте чек-листы
@@ -25,7 +26,7 @@ https://t.me/cheklistbot_bot?start={user.uid}"""
                   parent_id=parent_id,
                   user_role=user_role)
     keyboard = KeyboardHelper.main_menu_buttons(user)
-    print (send_text)
+    print ('send_text2', send_text)
     user.send_message(text=send_text, keyboard=keyboard)
 
 
