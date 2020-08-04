@@ -5,40 +5,76 @@ import time
 import telebot
 
 from buttons_helper import KeyboardHelper
-from dbconnector import Dbconnetor
+from checklist_helper import ChecklistHelper
+from dbconnector import DbConnetor
 
 
-class Botuser():
+class BotUser:
 
     def __init__(self, uid, bot):
         self.uid = uid
         self.bot = bot
 
+    """
+    Select message text by message index
+    """
+
     @staticmethod
-    def get_admins():
-        result = Dbconnetor.execute_select_many_query("""SELECT user_id FROM toparents_bot.bot_admin
-                                                           WHERE status = 'ENABLE'""")
-        admins_list = []
+    def select_message(message_index):
+        result = DbConnetor.execute_select_query(f"""SELECT message_text FROM checklist_bot.messages
+                                                       WHERE message_index = '{message_index}'""")
         if result:
-            for row in result:
-                admins_list.append(row[0])
-            return admins_list
+            return str(result[0])
 
-    @staticmethod
-    def get_username(uid):
-        result = Dbconnetor.execute_select_query(
-            "SELECT username, first_name, last_name from core.users WHERE user_id = {}".format(
-                uid))
-        if result[1] != 'None':
-            return (result[1] + ' ' + result[2])
+    """
+    Reacting to '/start' command
+    """
+
+    def join_bot(self, last_name, first_name, user_name, parent_id, user_role):
+        if parent_id:
+            DbConnetor.execute_insert_query(
+                f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
+                   VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}','{parent_id}', '{user_role}' )
+                   ON CONFLICT DO NOTHING;""")
+            DbConnetor.execute_insert_query(
+                f"""INSERT INTO checklist_bot.active_child
+	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
+                    ON CONFLICT (user_id) DO UPDATE 
+                        SET child_id = {self.uid};""")
+            DbConnetor.execute_insert_query(
+                f"""INSERT INTO checklist_bot.active_child
+	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
+                    ON CONFLICT (user_id) DO UPDATE 
+                        SET child_id = {self.uid};""")
         else:
-            return result[0]
+            DbConnetor.execute_insert_query(
+                f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
+                   VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}', '{self.uid}', 'parent' )
+                   ON CONFLICT DO NOTHING;""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('DISLIKE_LIE_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('DISLIKE_BROKE_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('WEEK_CHECKLIST_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('ONCE_CHECKLIST_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('MONTH_CHECKLIST_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('DATE_CHECKLIST_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('LIKE_TRUE_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('LIKE_HELP_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                    VALUES('DAY_CHECKLIST_VAL', 100, {self.uid});""")
+            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.users_state (user_id, user_state)
+                    VALUES({self.uid}, '');""")
 
-    def get_user_lang(self):
-        lang = Dbconnetor.execute_select_query(
-            "SELECT lang from core.users WHERE users.user_id = {}".format(self.uid))
-        if lang:
-            return lang[0]
+    """
+    Sending message
+    """
 
     def send_message(self, chat_id=None, message_index=None, text=None, keyboard=None):
         if not text:
@@ -49,102 +85,230 @@ class Botuser():
 
         try:
             if keyboard:
-                return self.bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard, parse_mode='Markdown')
+                self.bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
             else:
-                return self.bot.send_message(chat_id=chat_id, text=text, parse_mode='Markdown')
+                self.bot.send_message(chat_id=chat_id, text=text)
         except telebot.apihelper.ApiException:
-            Dbconnetor.execute_insert_query("""UPDATE core.users SET aggregator_bot_block_date = '{}' WHERE user_id = '{}'
-                                            """.format(datetime.datetime.now(), chat_id))
+            DbConnetor.execute_insert_query(f"""UPDATE checklist_bot.users
+                                                SET block_date = '{datetime.datetime.now()}'
+                                                WHERE user_id = '{chat_id}'
+                                            """)
 
-    def select_message(self, message_index):
-        lang = self.get_user_lang()
-        if not lang:
-            lang = 'rus'
-        result = Dbconnetor.execute_select_query("""SELECT text FROM toparents_bot.messages
-                                                       WHERE lang = '{0}'
-                                                       AND message_index = '{1}'""".format(lang, message_index))
-        if result:
-            return str(result[0])
+    """
+    User attributes method
+    """
 
-    def join_aggrbot(self, last_name, first_name, username, ref_key='Notset', lang='rus'):
-        Dbconnetor.execute_insert_query("""
-        INSERT INTO core.users
-	        ( ref_id, lang, interface, user_id, last_name, first_name, username, aggregator_bot_join_date)
-	    VALUES
-	        ( '{0}', '{1}', 'TG', {2}, '{3}', '{4}', '{5}', current_timestamp )
-	    ON CONFLICT ON CONSTRAINT idx_users
-	    DO UPDATE SET aggregator_bot_join_date = current_timestamp;""".format(ref_key, lang, self.uid, last_name,
-                                                                              first_name, username))
+    def get_user_role(self, user_id=None):
+        if not user_id:
+            user_id = self.uid
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT user_role from checklist_bot.users WHERE user_id = {user_id}")
+        if result_query:
+            return result_query[0]
 
-    def save_request_message(self, request_id, admin_id, message_id):
-        Dbconnetor.execute_insert_query("""
-                INSERT INTO toparents_bot.request_messages (message_id, user_id, request_id, status)
-                VALUES ('{}', '{}', '{}', 'SENT')
-        """.format(message_id, admin_id, request_id))
+    def get_user_username(self, user_id=None):
+        if not user_id:
+            user_id = self.uid
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT user_name from checklist_bot.users WHERE user_id = {user_id}")
+        if result_query:
+            return result_query[0]
 
-    def save_request(self, message_text):
-        request_id = uuid.uuid4()
-        Dbconnetor.execute_insert_query("""
-                INSERT INTO toparents_bot.user_requests
-	            ( request_id, sender_user_id, "message_text", request_status )
-	            VALUES ( '{}', {}, '{}', 'NEW' );
-                """.format(request_id, self.uid, message_text))
+    """
+    User state methods
+    """
 
-    def getstate(self):
-        status = Dbconnetor.execute_select_query(
-            "SELECT user_state from toparents_bot.user_state_toparents_bot WHERE user_id = {}".format(self.uid))
-        if status:
-            return status[0]
+    def get_user_state(self):
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT user_state from checklist_bot.users_state WHERE user_id = {self.uid}")
+        if result_query:
+            return result_query[0]
 
-    def change_user_state(self, user_state):
-        query = """
-        INSERT INTO toparents_bot.user_state_toparents_bot
-	        ( user_id,  user_state )
-	    VALUES
-	        ( '{}', '{}' )
-	    ON CONFLICT ON CONSTRAINT pk_user_state_user_id
-	    DO UPDATE SET user_state = '{}';""".format(self.uid, user_state, user_state)
+    def set_user_state(self, new_state):
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.users_state (user_id, user_state) 
+                VALUES ('{self.uid}', '{new_state}')
+                ON CONFLICT (user_id) DO UPDATE 
+                    SET user_state = '{new_state}';""")
 
-        Dbconnetor.execute_insert_query(query)
+    """
+    User input value methods
+    """
 
-    def request_update_staus(self, request_id, new_staus, resposne_text):
-        now = datetime.datetime.now()
-        query = """
-                UPDATE toparents_bot.user_requests SET request_status = '{}', response_text = '{}', response_datetime = '{}' WHERE request_id = '{}'
-        """.format(new_staus, resposne_text, now, request_id)
-        Dbconnetor.execute_insert_query(query)
+    def get_user_input_value(self):
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT input_value from checklist_bot.user_input_value WHERE user_id = {self.uid}")
+        if result_query:
+            return result_query[0]
 
-    def get_message_ids(self, request_id):
-        result = Dbconnetor.execute_select_many_query("""SELECT message_id, user_id FROM toparents_bot.request_messages
-                                                           WHERE request_id = '{}'""".format(request_id))
-        message_list = []
-        if result:
-            for row in result:
-                message_list.append(row)
-            return message_list
+    def set_user_input_value(self, new_state):
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.user_input_value (user_id, input_value) 
+                VALUES ('{self.uid}', '{new_state}')
+                ON CONFLICT (user_id) DO UPDATE 
+                    SET input_value = '{new_state}';""")
 
-    def send_post_to_users(self, post_index):
-        dbconnector = Dbconnetor()
-        users = dbconnector.execute_select_many_query(
-            "SELECT user_id from core.users WHERE aggregator_bot_join_date IS NOT NULL AND aggregator_bot_block_date IS NULL")
-        post = self.select_message(post_index)
-        for user in users:
-            self.send_message(chat_id=user[0], text=post)
-            time.sleep(1)
+    """
+    Active child methods
+    """
 
-    def send_custom_post(self, post_index):
-        users = Dbconnetor.execute_select_many_query(
-            "SELECT user_id from core.users WHERE aggregator_bot_join_date IS NOT NULL")
-        keyboard = KeyboardHelper.yes_no_answers(user=self, post_index=post_index)
-        send_text = self.select_message(post_index)
-        for user in users:
-            self.send_message(chat_id=user[0], text=send_text, keyboard=keyboard)
+    def get_active_child(self):
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT child_id from checklist_bot.active_child WHERE user_id = {self.uid}")
+        if result_query:
+            return result_query[0]
+
+    def set_active_child(self, child_id):
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.active_child (user_id, child_id) 
+                VALUES ('{self.uid}', '{child_id}')
+                ON CONFLICT (user_id) DO UPDATE 
+                    SET child_id = '{child_id}';""")
+
+    def get_parent_user_id(self):
+        result_query = DbConnetor.execute_select_query(
+            f"SELECT parent_user_id FROM checklist_bot.users WHERE user_id = {self.uid}")
+        if result_query:
+            return result_query[0]
+
+    def get_all_childs(self):
+        parent_user_id = self.get_parent_user_id()
+        result_query = DbConnetor.execute_select_many_query(
+            f"""SELECT user_id
+                FROM checklist_bot.users
+                WHERE parent_user_id = '{parent_user_id}'
+                AND user_role = 'child'""")
+        result = []
+        if result_query:
+            for elem in result_query:
+                result.append(elem[0])
+            return result
+
+    def change_active_user(self):
+        current_active_child = self.get_active_child()
+        all_childs = self.get_all_childs()
+        next_index = all_childs.index(current_active_child) + 1
+        current_active_child_id = all_childs.index(current_active_child)
+        if current_active_child_id == len(all_childs) - 1:
+            next_index = 0
+        self.set_active_child(all_childs[next_index])
+
+    def get_group_users(self):
+        result_query = DbConnetor.execute_select_many_query(
+            f"""SELECT user_id
+                FROM checklist_bot.users
+                WHERE parent_user_id = '{self.uid}'""")
+        group_user_list = []
+        for group_user in result_query:
+            group_user_list.append(group_user[0])
+        return group_user_list
+
+    """
+    Checklist methods
+    """
+
+    def get_checklist_list(self, checklist_type, child_profile=None):
+        if not child_profile:
+            child_profile = self.get_active_child()
+        checklist_helper = ChecklistHelper(self.uid)
+        result_query = checklist_helper.get_checklist_list(checklist_type=checklist_type, child_user_id=child_profile)
+        return result_query
+
+    def edit_checklist_item(self, item_id, new_item):
+        checklist_helper = ChecklistHelper(self.uid)
+        checklist_helper.edit_checklist_item(item_id=item_id, new_item=new_item)
+
+    def check_checklist_item(self, item_id):
+        checklist_helper = ChecklistHelper(self.uid)
+        checklist_helper.check_checklist_item(item_id=item_id)
+
+    def add_checklist_item(self, new_item, checklist_type):
+        active_child = self.get_active_child()
+        checklist_helper = ChecklistHelper(self.uid)
+        checklist_helper.add_checklist_item(new_item=new_item, checklist_type=checklist_type, child=active_child)
+
+    def del_checklist_item(self, item_id):
+        checklist_helper = ChecklistHelper(self.uid)
+        checklist_helper.del_checklist_item(item_id=item_id)
+
+    """
+    Likes reacting
+    """
+    def get_configs(self, return_conf_name=False):
+        parent_id = self.get_parent_user_id()
+        result_query = DbConnetor.execute_select_many_query(f"""
+            SELECT conf_name, conf_value
+            FROM checklist_bot.configuration
+            WHERE group_id = {parent_id}
+        """)
+        result = []
+        for row in result_query:
+            if return_conf_name:
+                result.append(row[0])
+            else:
+                result.append({'conf_name':row[0],
+                               'conf_value':row[1]})
+        return result
+
+    def get_conf_value(self, conf_name):
+        parent_id = self.get_parent_user_id()
+        result_query = DbConnetor.execute_select_query(f"""
+            SELECT conf_value
+            FROM checklist_bot.configuration
+            WHERE conf_name = '{conf_name}'
+            AND group_id = {parent_id}
+        """)
+        if result_query:
+            return result_query[0]
+
+    def update_conf_value(self, conf_name, new_value):
+        parent_id = self.get_parent_user_id()
+        DbConnetor.execute_insert_query(f"""
+            UPDATE checklist_bot.configuration
+            SET conf_value = {new_value} 
+            WHERE conf_name = '{conf_name}'
+            AND group_id = {parent_id};
+        """)
 
 
-    def save_answer(self, answer, test_type):
-        Dbconnetor.execute_insert_query("""
-                INSERT INTO
-                    toparents_bot.user_answers (user_id, answer, status, question_num, post_type)
-	            VALUES ({}, '{}', 'ACTIVE', 1 , '{}');""".format(
-            self.uid, answer, test_type))
+    def send_like(self, child_id, like_var, like_type):
+        DbConnetor.execute_insert_query(f"""
+                UPDATE checklist_bot.users
+                SET likes = likes + 1
+                WHERE user_id = {child_id};""")
+        if like_type == '1':
+            trust_correction = self.get_conf_value("LIKE_TRUE_VAL")
+        else:
+            trust_correction = self.get_conf_value("LIKE_HELP_VAL")
+        DbConnetor.execute_insert_query(f"""
+                UPDATE checklist_bot.users
+                SET trust_level = trust_level + {trust_correction}
+                WHERE user_id = {child_id};""")
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.users_likes
+	            ( user_id, from_user_id, like_type, like_var)
+                VALUES ( {child_id}, {self.uid}, '{like_type}', '{like_var}' );""")
 
+    def send_dislike(self, child_id, like_var, like_type):
+        DbConnetor.execute_insert_query(f"""
+                UPDATE checklist_bot.users
+                SET likes = likes - 1
+                WHERE user_id = {child_id};""")
+        if like_type == '1':
+            trust_correction = self.get_conf_value("DISLIKE_LIE_VAL")
+        else:
+            trust_correction = self.get_conf_value("DISLIKE_BROKE_VAL")
+        DbConnetor.execute_insert_query(f"""
+                UPDATE checklist_bot.users
+                SET trust_level = trust_level - {trust_correction}
+                WHERE user_id = {child_id};""")
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.users_likes
+	            ( user_id, from_user_id, like_type, like_var)
+                VALUES ( {child_id}, {self.uid}, '{like_type}', '{like_var}' );""")
+
+
+if __name__ == '__main__':
+    user = BotUser(uid=556047985, bot='bot')
+    print(user.get_configs())
+    print(user.get_configs(return_conf_name=True))
