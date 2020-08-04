@@ -15,17 +15,11 @@ def stating_handler(user, message):
         send_text = f"""Добро пожаловать! Добавьте профиль ребенка и настройте чек-листы
 
 Сслылка для ребенка:
-https://t.me/cheklistbot_bot?start={user.uid}
-Ссылка для второго родителя:
-https://t.me/cheklistbot_bot?start=parent_{user.uid}"""
+https://t.me/cheklistbot_bot?start={user.uid}"""
     else:
         send_text = """Добро пожаловать!"""
 
-
-    if '_' in message.text:
-        user_role = 'parent'
-    else:
-        user_role = 'child'
+    user_role = 'child'
     user.join_bot(last_name=message.from_user.last_name,
                   first_name=message.from_user.first_name,
                   user_name=message.from_user.username,
