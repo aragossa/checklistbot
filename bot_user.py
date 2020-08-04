@@ -38,12 +38,13 @@ class BotUser:
                 f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
                    VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}','{parent_id}', '{user_role}' )
                    ON CONFLICT DO NOTHING;""")
+            print ('parent_id3', parent_id)
             DbConnetor.execute_insert_query(
                 f"""INSERT INTO checklist_bot.active_child
 	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
                     ON CONFLICT (user_id) DO UPDATE 
                         SET child_id = {self.uid};""")
-            print ('parent_id3', parent_id)
+            print ('parent_id4', parent_id)
         else:
             print ('test else')
             DbConnetor.execute_insert_query(
