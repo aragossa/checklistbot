@@ -23,13 +23,10 @@ bot = telebot.TeleBot(TOKEN, threaded=True)
 def handle_start(m):
     user = BotUser(uid=m.chat.id, bot=bot)
 
-    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users_state WHERE user_id = {user.uid}""")
+    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.active_child""")
+    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users_state""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.configuration WHERE group_id = {user.uid}""")
-    # DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.active_child WHERE user_id = {user.uid}""")
-    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users_state WHERE user_id = 1196766492""")
-    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.active_child WHERE child_id = 1196766492""")
-    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users WHERE user_id = 1196766492""")
-    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users WHERE user_id = {user.uid}""")
+    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users""")
 
 @bot.message_handler(commands=['start'])
 def handle_start(m):
