@@ -29,59 +29,71 @@ class BotUser:
     """
     Reacting to '/start' command
     """
-
-    def join_bot(self, last_name, first_name, user_name, parent_id, user_role):
-        print ('parent_id1', parent_id)
-        if parent_id:
-            print ('parent_id2', parent_id)
-            DbConnetor.execute_insert_query(
-                f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
-                   VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}','{parent_id}', '{user_role}' )
-                   ON CONFLICT DO NOTHING;""")
-            print ('parent_id3', parent_id)
-            DbConnetor.execute_insert_query(
-                f"""INSERT INTO checklist_bot.active_child
-	                    ( user_id, child_id) VALUES ( {parent_id}, {self.uid} )
-                    ON CONFLICT DO NOTHING;""")
-            print ('parent_id4', parent_id)
+    def is_registered(self):
+        uid = DbConnetor.execute_select_query(f"""
+                SELECT user_id FROM checklist_bot.users
+                WHERE user_id = {self.uid}
+            """)
+        if uid == self.uid:
+            return True
         else:
-            print ('test else')
-            DbConnetor.execute_insert_query(
-                f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
-                   VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}', '{self.uid}', 'parent' )
-                   ON CONFLICT DO NOTHING;""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('DISLIKE_LIE_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('DISLIKE_BROKE_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('WEEK_CHECKLIST_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('ONCE_CHECKLIST_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('MONTH_CHECKLIST_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('DATE_CHECKLIST_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('LIKE_TRUE_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('LIKE_HELP_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
-                    VALUES('DAY_CHECKLIST_VAL', 100, {self.uid});""")
-            DbConnetor.execute_insert_query(f"""INSERT INTO checklist_bot.users_state (user_id, user_state)
-                    VALUES({self.uid}, '');""")
-        print ('test fin')
+            return False
+
+    def get_new_user_role(self, reg_key):
+        result_query = DbConnetor.execute_select_query(f"""
+                    SELECT user_id, inv_type FROM checklist_bot.reg_keys
+                    WHERE key_value = '{reg_key}' 
+                    """)
+        return result_query
+
+    def create_parent(self, last_name, first_name, user_name, reg_key_child, reg_key_parent):
+        DbConnetor.execute_insert_query(
+            f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
+                VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}', '{self.uid}', 'parent' )
+                ON CONFLICT DO NOTHING;""")
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.configuration (conf_name, conf_value, group_id)
+                VALUES ('DISLIKE_LIE_VAL', 100, {self.uid}),
+                       ('DISLIKE_BROKE_VAL', 100, {self.uid}),
+                       ('WEEK_CHECKLIST_VAL', 100, {self.uid}),
+                       ('ONCE_CHECKLIST_VAL', 100, {self.uid}),
+                       ('MONTH_CHECKLIST_VAL', 100, {self.uid}),
+                       ('DATE_CHECKLIST_VAL', 100, {self.uid}),
+                       ('LIKE_TRUE_VAL', 100, {self.uid}),
+                       ('LIKE_HELP_VAL', 100, {self.uid}),
+                       ('DAY_CHECKLIST_VAL', 100, {self.uid});""")
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.users_state (user_id, user_state)
+                VALUES ({self.uid}, '');""")
+
+        DbConnetor.execute_insert_query(f"""
+                INSERT INTO checklist_bot.reg_keys (user_id, inv_type, key_value)
+                VALUES
+                    ({self.uid}, 'child', '{reg_key_child}'),
+                    ({self.uid}, 'parent', '{reg_key_parent}');
+                """)
+        DbConnetor.execute_insert_query(
+            f"""INSERT INTO checklist_bot.active_child ( user_id, child_id )
+                VALUES ( '{self.uid}', '{self.uid}' )
+                ON CONFLICT DO NOTHING;""")
+
+    def join_group(self, last_name, first_name, user_name, parent_id, user_role):
+        DbConnetor.execute_insert_query(
+            f"""INSERT INTO checklist_bot.users ( user_id, first_name, last_name, user_name, parent_user_id, user_role )
+                VALUES ( '{self.uid}', '{last_name}', '{first_name}', '{user_name}','{parent_id}', '{user_role}' )
+                ON CONFLICT DO NOTHING;""")
+        DbConnetor.execute_insert_query(
+            f"""INSERT INTO checklist_bot.active_child ( user_id, child_id )
+                VALUES ( '{self.uid}', '{self.uid}' )
+                ON CONFLICT DO NOTHING;""")
 
     """
     Sending message
     """
 
     def send_message(self, chat_id=None, message_index=None, text=None, keyboard=None):
-        print ('text2', text)
         if not text:
             text = self.select_message(message_index=message_index)
-
-        print ('text2', text)
 
         if not chat_id:
             chat_id = self.uid
@@ -155,13 +167,13 @@ class BotUser:
     Active child methods
     """
 
-    def get_active_child(self):
+    def get_active_user(self):
         result_query = DbConnetor.execute_select_query(
             f"SELECT child_id from checklist_bot.active_child WHERE user_id = {self.uid}")
         if result_query:
             return result_query[0]
 
-    def set_active_child(self, child_id):
+    def set_active_user(self, child_id):
         DbConnetor.execute_insert_query(f"""
                 INSERT INTO checklist_bot.active_child (user_id, child_id) 
                 VALUES ('{self.uid}', '{child_id}')
@@ -188,19 +200,21 @@ class BotUser:
             return result
 
     def change_active_user(self):
-        current_active_child = self.get_active_child()
-        all_childs = self.get_all_childs()
-        next_index = all_childs.index(current_active_child) + 1
-        current_active_child_id = all_childs.index(current_active_child)
-        if current_active_child_id == len(all_childs) - 1:
+        current_active_child = self.get_active_user()
+        all_users = self.get_group_users()
+        print (all_users)
+        next_index = all_users.index(current_active_child) + 1
+        current_active_child_id = all_users.index(current_active_child)
+        if current_active_child_id == len(all_users) - 1:
             next_index = 0
-        self.set_active_child(all_childs[next_index])
+        self.set_active_user(all_users[next_index])
 
     def get_group_users(self):
+        parent_id = self.get_parent_user_id()
         result_query = DbConnetor.execute_select_many_query(
             f"""SELECT user_id
                 FROM checklist_bot.users
-                WHERE parent_user_id = '{self.uid}'""")
+                WHERE parent_user_id = '{parent_id}'""")
         group_user_list = []
         for group_user in result_query:
             group_user_list.append(group_user[0])
@@ -212,7 +226,7 @@ class BotUser:
 
     def get_checklist_list(self, checklist_type, child_profile=None):
         if not child_profile:
-            child_profile = self.get_active_child()
+            child_profile = self.get_active_user()
         checklist_helper = ChecklistHelper(self.uid)
         result_query = checklist_helper.get_checklist_list(checklist_type=checklist_type, child_user_id=child_profile)
         return result_query
@@ -226,7 +240,7 @@ class BotUser:
         checklist_helper.check_checklist_item(item_id=item_id)
 
     def add_checklist_item(self, new_item, checklist_type):
-        active_child = self.get_active_child()
+        active_child = self.get_active_user()
         checklist_helper = ChecklistHelper(self.uid)
         checklist_helper.add_checklist_item(new_item=new_item, checklist_type=checklist_type, child=active_child)
 
@@ -313,5 +327,4 @@ class BotUser:
 
 if __name__ == '__main__':
     user = BotUser(uid=556047985, bot='bot')
-    print(user.get_configs())
-    print(user.get_configs(return_conf_name=True))
+    print(user.get_new_user_role(inv_key='05d0fd3f-6f12-45d3-87c6-8e91dc2ba6e6'))

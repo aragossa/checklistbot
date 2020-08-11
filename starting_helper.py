@@ -1,5 +1,6 @@
 # /usr/bin/python3
 import datetime
+import uuid
 
 import telebot
 
@@ -9,25 +10,39 @@ from dbconnector import DbConnetor
 
 
 def stating_handler(user, message):
-    parent_id = message.text.replace('/start ', '')
-    send_text = "Добро пожаловать!"
-    print ('send_text1', send_text)
-    if parent_id == ('/start'):
-        parent_id = None
-        send_text = f"""Добро пожаловать! Добавьте профиль ребенка и настройте чек-листы
-
+    if user.is_registered():
+        user.send_message(text="Вы уже зарегистрированы")
+    else:
+        reg_key = message.text.replace('/start ', '')
+        send_text = "Добро пожаловать!"
+        if reg_key == ('/start'):
+            reg_key_child = uuid.uuid4()
+            reg_key_parent = uuid.uuid4()
+            send_text = f"""Добро пожаловать! Добавьте профиль ребенка и настройте чек-листы    
 Сслылка для ребенка:
-https://t.me/cheklistbot_bot?start={user.uid}"""
+https://t.me/cheklistbot_bot?start={reg_key_child}
 
-    user_role = 'child'
-    user.join_bot(last_name=message.from_user.last_name,
-                  first_name=message.from_user.first_name,
-                  user_name=message.from_user.username,
-                  parent_id=parent_id,
-                  user_role=user_role)
-    keyboard = KeyboardHelper.main_menu_buttons(user)
-    print ('send_text2', send_text)
-    user.send_message(text=send_text, keyboard=keyboard)
+Сслылка для второго родителя:
+https://t.me/cheklistbot_bot?start={reg_key_parent}"""
+
+            user.create_parent(last_name=message.from_user.last_name,
+                        first_name=message.from_user.first_name,
+                        user_name=message.from_user.username,
+                        reg_key_child=reg_key_child,
+                        reg_key_parent=reg_key_parent
+                          )
+        else:
+            parent_id, user_role = user.get_new_user_role(reg_key=reg_key)
+            user.join_group(last_name=message.from_user.last_name,
+                            first_name=message.from_user.first_name,
+                            user_name=message.from_user.username,
+                            parent_id=parent_id,
+                            user_role=user_role,
+                               )
+
+
+        keyboard = KeyboardHelper.main_menu_buttons(user)
+        user.send_message(text=send_text, keyboard=keyboard)
 
 
 def text_message_handler(user, message, bot):
@@ -149,7 +164,7 @@ def choose_checklists(user, call):
         user.send_message(text=send_text, keyboard=keyboard)
     else:
         send_text = 'Чеклист не задан'
-        user.send_message(text=send_text)
+        user.send_message(text=send_text, keyboard=keyboard)
 
 
 
@@ -166,6 +181,7 @@ def send_checklist_again(user, checklist_type, editing=False):
         user.send_message(text=send_text, keyboard=keyboard)
     else:
         send_text = 'Чеклист не задан'
+        keyboard = user.add_checklist_item()
         user.send_message(text=send_text)
 #check
 #view
@@ -173,7 +189,6 @@ def send_checklist_again(user, checklist_type, editing=False):
 #del
 #add
 def checklist_item_actions(user, call):
-    print(call.data)
     action = call.data.split('_')[1]
     if action == 'add':
         checklist_type = call.data.split('_')[2]

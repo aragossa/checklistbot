@@ -26,7 +26,9 @@ def handle_start(m):
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.active_child""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users_state""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.configuration WHERE group_id = {user.uid}""")
+    DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.reg_keys""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users""")
+
 
 @bot.message_handler(commands=['start'])
 def handle_start(m):

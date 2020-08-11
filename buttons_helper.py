@@ -7,13 +7,12 @@ class KeyboardHelper:
     def main_menu_buttons(user):
         keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
         user_role = user.get_user_role()
-        user_childs_list = user.get_all_childs()
-        if user_childs_list:
-            if (user_role == 'parent' and len(user_childs_list) > 1):
-                child_id = user.get_active_child()
-                child_name = user.get_user_username(user_id=child_id)
-                child_button = types.KeyboardButton('Текущий профиль: ' + child_name)
-                keyboard.add(child_button)
+        users_group_list = user.get_group_users()
+
+        child_id = user.get_active_user()
+        child_name = user.get_user_username(user_id=child_id)
+        user_button = types.KeyboardButton('Текущий профиль: ' + child_name)
+        keyboard.add(user_button)
         btn1 = types.KeyboardButton('Ежедневно')
         btn2 = types.KeyboardButton('Еженедельно')
         btn3 = types.KeyboardButton('Другое')
@@ -52,7 +51,7 @@ class KeyboardHelper:
     @staticmethod
     def get_likes_keyboard(user, action):
         keyboard = types.InlineKeyboardMarkup()
-        active_child = user.get_active_child()
+        active_child = user.get_active_user()
         if action == 'like_p':
             text_btn1 = 'Правда'
             text_btn2 = 'Помощь природе'
@@ -65,10 +64,10 @@ class KeyboardHelper:
         return keyboard
 
     @staticmethod
-    def add_checklist_item():
+    def add_checklist_item_button(checklist_type):
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Добавить пункт',
-                                                callback_data='item_add'))
+                                                callback_data='item_add_' + checklist_type))
 
     @staticmethod
     def generate_checklist_buttons(user, checklist_type, editable=False):
@@ -98,8 +97,8 @@ class KeyboardHelper:
                     keyboard.add(btn_item, btn_edit, btn_del)
                 else:
                     keyboard.add(btn_item)
-        else:
-            keyboard = None
+        # else:
+        #     keyboard = None
         return keyboard
 
     @staticmethod
