@@ -11,7 +11,7 @@ class DbConnetor ():
             cur = conn.cursor()
             return conn, cur
         except (Exception, psycopg2.DatabaseError) as error:
-            print(error)
+            pass
 
     @staticmethod
     def execute_select_query(query):
@@ -46,4 +46,3 @@ class DbConnetor ():
 
 if __name__ == '__main__':
     token = DbConnetor.get_config_parameter('api_token', 'aggr_bot')
-    print(token)

@@ -202,7 +202,6 @@ class BotUser:
     def change_active_user(self):
         current_active_child = self.get_active_user()
         all_users = self.get_group_users()
-        print (all_users)
         next_index = all_users.index(current_active_child) + 1
         current_active_child_id = all_users.index(current_active_child)
         if current_active_child_id == len(all_users) - 1:
@@ -327,4 +326,3 @@ class BotUser:
 
 if __name__ == '__main__':
     user = BotUser(uid=556047985, bot='bot')
-    print(user.get_new_user_role(inv_key='05d0fd3f-6f12-45d3-87c6-8e91dc2ba6e6'))

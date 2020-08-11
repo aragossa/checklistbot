@@ -22,7 +22,6 @@ bot = telebot.TeleBot(TOKEN, threaded=True)
 @bot.message_handler(commands=['clear'])
 def handle_start(m):
     user = BotUser(uid=m.chat.id, bot=bot)
-
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.active_child""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.users_state""")
     DbConnetor.execute_insert_query(f"""DELETE FROM checklist_bot.configuration WHERE group_id = {user.uid}""")
